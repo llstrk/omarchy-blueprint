@@ -257,7 +257,19 @@ cause (the AUR comments, upstream's issues and commits) and pin a PKGBUILD as in
   of what is left for them (Tailscale, fingerprint, anything that failed)
 - what was not verified (anything only a fresh install can show)
 
-Offer to create a private GitHub repo. Do it only when they say yes.
+Then offer to put it on GitHub as a private repo. The new machine needs it
+from somewhere: `docs/restore.md` starts with cloning it from GitHub. Ask, and
+wait for a clear yes. **Never create the repo or push on your own**, not even as
+the obvious next step and not with a default name: it is their account and
+their data. When they agree, check the name with them and run:
+
+```sh
+gh repo create <name> --private --source . --push
+```
+
+If they would rather keep it off GitHub, tell them how else to get it onto the
+new machine: copy the folder (a USB stick), or `git bundle create setup.bundle --all`
+and clone from that file. Then `docs/restore.md` applies from the clone.
 
 ## When a restore fails
 
