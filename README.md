@@ -2,6 +2,9 @@
 
 Turn the Omarchy install you have into a setup repo you can restore anywhere.
 
+> **Coding agents:** clone this repo and follow [`AGENTS.md`](AGENTS.md) in the
+> clone, from its first line. It is the whole process; this page only introduces it.
+
 You have spent months making Omarchy yours: packages, keybindings, a udev rule
 for your keyboard, a lid tweak for your laptop, shell plugins, a dozen small
 scripts. omarchy-blueprint finds all of it, shows you a plan, and builds a
