@@ -20,6 +20,7 @@ from ..omarchy import package_list
 from ..env import (Env, files_under, glob, is_junk, is_text, item, mode_of, read_text,
                    same_file, size_under, split_lines, walk)
 from ..git import git_facts
+from .identity import CREDENTIAL_FILES
 
 # Folders that hold app state, whatever is inside.
 APP_STATE_CONFIG = (
@@ -82,7 +83,7 @@ class Configs:
             self.c + "/mise",  # tools
             self.c + "/gh",  # identity
             h + "/.local/share/applications",  # desktop entries, below
-        )
+        ) + tuple(f"{h}/{c}" for c in CREDENTIAL_FILES)  # identity notes them: never carried
         self.app_state = tuple(f"{self.c}/{n}" for n in APP_STATE_CONFIG) + (h + "/.local/state", h + "/.local/share/nvim")
         # Paths tracked by Omarchy dots (mise history), if it is on.
         self.dots_tracked = {

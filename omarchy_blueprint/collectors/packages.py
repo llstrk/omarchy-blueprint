@@ -55,8 +55,14 @@ def installed_at_install(env: Env) -> set[str]:
     return names
 
 
+# An installer that signs in waits on a browser, which would stop the restore
+# halfway. Omarchy's Tailscale installer runs tailscale up.
+SIGNS_IN = re.compile(r"\btailscale up\b|\bauth login\b")
+
+
 def installers(env: Env) -> dict[str, str]:
-    """Package -> the omarchy-install-* command that installs it (first one wins)."""
+    """Package -> the omarchy-install-* command that installs it (first one wins).
+    Installers that sign in are left out: their packages are carried instead."""
     found: dict[str, str] = {}
     bin_dir = env.omarchy / "bin"
     for cmd in glob(bin_dir / "omarchy-install-*") + glob(bin_dir / "omarchy-*-install"):
@@ -65,6 +71,8 @@ def installers(env: Env) -> dict[str, str]:
         try:
             text = Path(cmd).read_text("utf-8", "replace")
         except OSError:
+            continue
+        if SIGNS_IN.search(text):
             continue
         for pkg in sorted(pkg_args(text)):
             found.setdefault(pkg, os.path.basename(cmd))

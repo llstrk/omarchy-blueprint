@@ -58,6 +58,25 @@ def shell_quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
+GITHUB_SSH = re.compile(r"^(?:ssh://)?git@github\.com[:/](.+?)(?:\.git)?/?$")
+
+
+def clone_url(url: str) -> str:
+    """The address a new machine clones from. GitHub over SSH needs a key the new
+    machine does not have yet; over HTTPS the GitHub sign-in covers private
+    repos. A password in an address is never written down."""
+    if m := GITHUB_SSH.match(url):
+        return f"https://github.com/{m.group(1)}.git"
+    return re.sub(r"^(https?://)[^/@]+@", r"\1", url)
+
+
+def needs_login(url: str) -> bool:
+    """Whether cloning needs more than the GitHub sign-in: SSH to another host, or
+    an address that had a password in it. mise stops the restore on a failed clone."""
+    clean = clone_url(url)
+    return bool(re.match(r"^(ssh://|[^/:@]+@[^/:]+:)", clean)) or (clean != url and "github.com" not in clean)
+
+
 def get(d: dict, key: str, default):
     """jq's //: missing, null and false all fall back."""
     v = d.get(key)
@@ -143,10 +162,12 @@ class Build:
         return out
 
     def repos(self, items):
-        """Repos and git plugins that can be reached. Ones that cannot are cloned in
-        the task instead, where a failure does not stop the run."""
-        return [f'{q(it["facts"]["path"])} = {{ url = {q(it["facts"]["url"])} }}' for it in items
-                if self.is_git(it) and self.reachable(it) and get(it["facts"], "url", "") != ""]
+        """Repos and git plugins a new machine can clone. Ones that could not be
+        reached, or need a login of their own, are cloned in the task instead,
+        where a failure does not stop the run."""
+        return [f'{q(it["facts"]["path"])} = {{ url = {q(clone_url(it["facts"]["url"]))} }}' for it in items
+                if self.is_git(it) and self.reachable(it) and get(it["facts"], "url", "") != ""
+                and not needs_login(it["facts"]["url"])]
 
     def dotfiles(self, items, mod):
         out = []
@@ -173,12 +194,16 @@ class Build:
                 dest = self.as_home(it["facts"]["path"])
                 lines.append(f'[ -d "{dest}" ] || git clone "{src}" "{dest}"')
         for it in items:
-            if self.is_git(it) and not self.reachable(it):
-                url, dest = it["facts"].get("url"), self.as_home(it["facts"]["path"])
-                lines += [f"# {url} could not be reached when this was generated. Try it, but never fail on it.",
+            raw = get(it["facts"], "url", "")
+            if self.is_git(it) and raw and (not self.reachable(it) or needs_login(raw)):
+                url, dest = clone_url(raw), self.as_home(it["facts"]["path"])
+                why = ("could not be reached when this was generated" if not self.reachable(it)
+                       else "needs a login or key of its own")
+                lines += [f"# {url} {why}. Try it without asking, but never fail on it:",
+                          "# the restore lists it for afterwards.",
                           f'if [ ! -d "{dest}" ]; then',
-                          f'  GIT_TERMINAL_PROMPT=0 git clone --quiet {q(url)} "{dest}" 2>/dev/null ||',
-                          f'    echo {q(f"{url} is unavailable, skipped")}',
+                          f'  GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes" git clone --quiet {q(url)} "{dest}" 2>/dev/null ||',
+                          f'    echo {q(f"Clone {url} into {dest}")} | tee -a "${{LATER_FILE:-/dev/null}}"',
                           "fi"]
         lines += [f'mise use -g {q(it["facts"]["mise"])}' for it in items if it["kind"] == "tool"]
         for it in items:
@@ -311,10 +336,11 @@ then names the package, applies everything else and asks for a rerun. To fix it:
      printf '%s\n' 'source /etc/makepkg.conf' \
        'for c in /etc/makepkg.conf.d/*.conf; do [[ -r $c ]] && source "$c"; done' \
        'PACMAN_AUTH=(sudo)' >"$build/makepkg.conf"
-     (cd "$build" && makepkg --config makepkg.conf --syncdeps --install --rmdeps --needed --noconfirm)
-     status=$?
+     # A failed build is listed for afterwards rather than stopping the task:
+     # the lines after it (another pinned package) still run.
+     (cd "$build" && makepkg --config makepkg.conf --syncdeps --install --rmdeps --needed --noconfirm) ||
+       echo "<name> did not build: see pkgbuilds/<name>" | tee -a "${LATER_FILE:-/dev/null}"
      rm -rf "$build"
-     exit "$status"
    fi
    ```
 
@@ -413,7 +439,9 @@ def write_steps(target: Path, items: list[dict], modules: list[str]) -> None:
     # runs unattended. Fingerprint and Tailscale need packages it installs.
     if is_step("identity:ssh-keys"):
         step("25", "ssh-keys")
-    if is_step("identity:tailscale"):
+    # The reminder to join the tailnet, when the restore installs Tailscale.
+    if is_step("identity:tailscale") and has(lambda it: it["id"] == "package:tailscale"
+                                              and it["class"] in ("carry", "module", "step")):
         step("60", "tailscale")
     if is_step("identity:fingerprint"):
         step("70", "fingerprint")

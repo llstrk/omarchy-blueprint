@@ -48,12 +48,36 @@ rc=$?
 sleep 0.5 # let script(1) write the last lines
 # The log is a terminal recording: drop colours and carriage returns to read it.
 plain() { tail -c +"$from" "$1" | sed -E 's/\x1b\[[0-9;?]*[a-zA-Z]//g; s/\x1b\][^\x1b]*\x1b\\//g; s/\r//g'; }
-if ((rc != 0)) && plain "$log" | grep -qE '^mise ERROR (yay|pacman|paru) exited'; then
-  # mise stops at the first failure, and packages come first. pacman and yay
-  # install what they can, so apply everything after them instead of nothing.
-  warn "A package did not install (mise bootstrap exit $rc). Applying the rest without it."
+# Which packages are still missing says what failed, whatever mise's error
+# text is in this version. None missing: the failure came after the packages.
+left() { jq -r --arg m "$1" '(.[$m].packages // [])[] | select(.state != "installed") | .package' <<<"$status"; }
+status=""
+((rc != 0)) && status=$(mise bootstrap packages status --json 2>/dev/null)
+if ((rc != 0)) && [[ -n "$(left pacman)$(left aur)" ]]; then
+  # mise stops at the first failure, and packages come first. Install what can
+  # be installed, then apply everything after the packages instead of nothing.
+  warn "A package did not install (mise bootstrap exit $rc). Installing the rest without it."
   plain "$log" | grep -aE 'No AUR package found|^( *-> )?[a-z0-9@._+-]+ - exit status|^error: |[^>] ERROR: ' |
     sed 's/^ *-> //; s/^/      /' | sort -u | head -12
+  if [[ -n "$(left pacman)" ]]; then
+    # pacman takes the list all or nothing: one name that is gone (renamed, or
+    # dropped from the repos) and none install, and mise never gets to the AUR
+    # ones. When only AUR ones are missing, yay already built what it could.
+    repo=() aur=() gone=()
+    for pkg in $(left pacman); do
+      if pacman -Si "$pkg" >/dev/null 2>&1; then repo+=("$pkg"); else gone+=("$pkg"); fi
+    done
+    for pkg in $(left aur); do
+      if yay -Si "$pkg" >/dev/null 2>&1; then aur+=("$pkg"); else gone+=("$pkg"); fi
+    done
+    ((${#repo[@]})) && sudo pacman -S --needed --noconfirm "${repo[@]}"
+    ((${#aur[@]})) && yay -S --needed --noconfirm "${aur[@]}"
+    for pkg in "${gone[@]}"; do
+      warn "$pkg is in neither the Arch repos nor the AUR any more."
+      later "$pkg is gone from the Arch repos and the AUR: find what replaced it, then change or remove it in mise.toml"
+    done
+    sleep 0.5
+  fi
   broken=$(plain "$log" | sed -nE 's/^( *-> )?([a-z0-9@._+-]+) - exit status.*/\2/p' | sort -u)
   mise bootstrap --yes --force-dotfiles --skip packages
   rc=$?

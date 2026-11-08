@@ -70,6 +70,15 @@ class TestConfigs(Case):
         self.assertEqual(items["config:~/.config/app/app.conf"]["facts"]["lines_changed"], 2)
         self.assertNotIn("config:~/.config/app/app.conf.bak", items)
 
+    def test_credential_files_are_never_offered_as_settings(self):
+        # identity notes them as not carried; configs must not offer them again.
+        self.m.write(self.m.home / ".config/rclone/rclone.conf", "[drive]\ntype = drive\n")
+        self.m.write(self.m.home / ".config/restic/password", "correct horse battery\n")
+        self.m.write(self.m.home / ".config/mytool/settings.toml", "x = 1\n")
+        ids = by_id(configs.collect(self.m.env()))
+        self.assertFalse([i for i in ids if "rclone" in i or "restic" in i], ids)
+        self.assertTrue([i for i in ids if "mytool" in i])
+
     def test_dots_tracked_files_are_left_to_dots(self):
         self.m.write(self.m.omarchy / "config/app/app.conf", "a = 1\n")
         self.m.write(self.m.home / ".config/app/app.conf", "a = 2\n")
@@ -152,14 +161,14 @@ class TestServices(Case):
 
 
 class TestIdentity(Case):
-    def test_tailscale_is_left_to_omarchys_installer(self):
-        # omarchy-install-service-tailscale runs tailscale up itself.
+    def test_tailscale_sign_in_is_left_for_after_the_restore(self):
+        # Signing in waits on a browser: the step only lists tailscale up.
         from omarchy_blueprint.collectors import identity
         self.m.which["tailscale"] = "/usr/bin/tailscale"
         self.m.answer("tailscale", "status", "--json", out='{"BackendState": "Running"}')
         it = by_id(identity.collect(self.m.env()))["identity:tailscale"]
-        self.assertEqual(it["class"], "skip")
-        self.assertIn("omarchy-install-service-tailscale", it["reason"])
+        self.assertEqual(it["class"], "step")
+        self.assertIn("tailscale up for afterwards", it["reason"])
 
 
 class TestPackages(Case):
@@ -167,15 +176,19 @@ class TestPackages(Case):
         m = self.m
         m.write(m.omarchy / "install/omarchy-base.packages", "# base\nhyprland\nmako\n")
         m.write(m.omarchy / "install/hardware.sh", "omarchy-pkg-add fprintd\n")
-        m.write(m.omarchy / "bin/omarchy-install-tailscale", "omarchy-pkg-add tailscale\n")
-        m.answer("pacman", "-Qqe", out="hyprland\ntailscale\nfprintd\nripgrep\nyay-thing\n")
+        m.write(m.omarchy / "bin/omarchy-install-spotify", "omarchy-pkg-add spotify\n")
+        # This one signs in, which would stop the restore: its package is carried instead.
+        m.write(m.omarchy / "bin/omarchy-install-service-tailscale", "omarchy-pkg-add tailscale\nsudo tailscale up\n")
+        m.answer("pacman", "-Qqe", out="hyprland\ntailscale\nspotify\nfprintd\nripgrep\nyay-thing\n")
         m.answer("pacman", "-Qqm", out="yay-thing\n")
         m.answer("pacman", "-T", out="mako\n", rc=127)
         m.answer("pacman", "-Sl", out="omarchy ripgrep 14.1-1 [installed]\nextra ripgrep 14.0-1\nextra fprintd 1.0-1\n")
         items = by_id(packages.collect(m.env()))
         self.assertNotIn("package:hyprland", items)
-        self.assertEqual(items["package:tailscale"]["class"], "step")
-        self.assertEqual(items["package:tailscale"]["facts"]["installer"], "omarchy-install-tailscale")
+        self.assertEqual(items["package:spotify"]["class"], "step")
+        self.assertEqual(items["package:spotify"]["facts"]["installer"], "omarchy-install-spotify")
+        self.assertEqual(items["package:tailscale"]["class"], "carry")
+        self.assertNotIn("installer", items["package:tailscale"]["facts"])
         self.assertEqual(items["package:fprintd"]["class"], "skip")
         self.assertEqual(items["package:ripgrep"]["class"], "carry")
         self.assertEqual(items["package:yay-thing"]["facts"]["source"], "aur")

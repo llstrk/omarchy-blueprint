@@ -46,11 +46,11 @@ def collect(env: Env) -> list[dict]:
             state = json.loads(env.run("tailscale", "status", "--json").out).get("BackendState") or ""
         except (ValueError, AttributeError):
             state = ""
-        # Omarchy's installer runs tailscale up itself, so a step of our own
-        # would only ask the same thing twice.
-        items.append(item("identity", "tailscale", "skip", f"Tailscale ({state or 'not running'}). Omarchy's installer "
-                          "(omarchy-install-service-tailscale) signs a new machine in with tailscale up, as a new "
-                          "device. Never copy /var/lib/tailscale.", {"state": state}))
+        # Signing in waits on a browser, so the restore never runs it: the step
+        # lists tailscale up for afterwards.
+        items.append(item("identity", "tailscale", "step", f"Tailscale ({state or 'not running'}). A new machine joins "
+                          "as a new device: the restore lists sudo tailscale up for afterwards. Never copy "
+                          "/var/lib/tailscale.", {"state": state}))
 
     # Fingerprints.
     if env.which("fprintd-list") and " - #" in env.run("fprintd-list", env.user).out:

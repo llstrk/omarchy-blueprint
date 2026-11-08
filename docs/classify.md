@@ -117,9 +117,9 @@ See `plugins.md`. In short:
 ## Logins, keys and personal data
 
 These are always steps, notes or left out, never files: SSH keys, gh,
-Tailscale, fingerprints, Wi-Fi, GPG, and credential files. Tailscale is left
-out by default: carry the `tailscale` package and `tailscaled.service`, not Omarchy's
-installer, which also runs `tailscale up`. `~/.ssh/config` can be carried
+Tailscale, fingerprints, Wi-Fi, GPG, and credential files. For Tailscale, carry the
+`tailscale` package and `tailscaled.service`, not Omarchy's installer, which also
+runs `tailscale up`: the Tailscale step lists signing in for after the restore. `~/.ssh/config` can be carried
 in a private repo after the person confirms it holds nothing private, with
 permissions `0600`.
 

@@ -30,7 +30,8 @@ The setup repo goes to `~/Work/my-omarchy` unless the person names another place
   that writes.
 - **Never carry secrets.** That covers private keys, tokens, `gh` hosts files, Tailscale state,
   Wi-Fi passwords, `.netrc` and browser profiles. Read a small file before you propose
-  carrying it. `bin/check-secrets` must come back clean before you commit.
+  carrying it. Run `bin/check-secrets` before you commit: it must find no strong match, and
+  read every line it warns about (it still exits 0 for those).
 - **Never publish.** Do not create remote repos, push or upload without the person asking
   in so many words. The generated repo holds names, hosts and paths: suggest a
   private repo.
@@ -50,8 +51,9 @@ or task lines:
    "Apply all of this now?". A question that needs nothing installed goes in a step
    numbered below 40.
 2. **The password once,** right after that answer (`need_sudo` in `lib/ui.sh`). The
-   whole run is one terminal, and sudo remembers the password per terminal, so never
-   wrap a command in `script` or another terminal. Call `need_sudo` before the first
+   whole run is one terminal (`bootstrap.sh` records it with `script` once, at the
+   start), and sudo remembers the password per terminal, so never wrap a single
+   command in `script` or another terminal inside the run. Call `need_sudo` before the first
    sudo in a step of your own. makepkg asks again for every pacman call unless it
    gets `PACMAN_AUTH=(sudo)`: use the build recipe in `docs/packages.md`.
 3. **Then the base system, unattended:** `mise bootstrap` installs the packages,
@@ -59,9 +61,10 @@ or task lines:
 4. **Nothing waits on the person after that.** A login, a pairing or a finger on a
    reader is never run mid-restore: the step checks it and hands the command to
    `later`, and the run ends with that list. GitHub sign-in is the one exception,
-   at the start, because private repos need it. Do not carry an installer that
-   signs in (Omarchy's Tailscale installer runs `tailscale up`): carry its package
-   and service instead.
+   at the start, because private repos need it. The inspector never proposes an
+   installer that signs in (Omarchy's Tailscale installer runs `tailscale up`): it
+   carries the package, and the Tailscale step lists `tailscale up` for afterwards.
+   Keep it that way.
 5. **Apps last** (`steps/80-apps.sh`), the installers that ask a question first.
    Phase 3 covers the rare app that has to come before `mise bootstrap`.
 
@@ -195,8 +198,10 @@ It writes `mise.toml`, `mise.<module>.toml`, copies of the carried files under
 `home/`, `etc/` and `modules/<module>/`, `bootstrap.sh` with steps chosen from
 `template/recipes/`, and a README. Then deal with what it reports:
 
-- **Files only root can read:** run the printed `sudo cat` commands only with the person's
-  go-ahead, then `chown` the repo back to them.
+- **Files only root can read:** your shell has no terminal for sudo's password, so
+  give the person the printed `sudo cat` commands to run in their own terminal (in
+  Claude Code, they can type them after `!`). Then check the files arrived and
+  belong to them.
 - **Services whose package is not carried:** carry the package, or drop the service.
   `mise bootstrap` fails on a unit that does not exist.
 - **Secrets:** remove the file or the line. Never commit past a strong match.

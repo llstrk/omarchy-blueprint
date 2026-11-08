@@ -45,8 +45,9 @@ What a fresh install taught the step (Omarchy 4.0 to 4.5):
   updates itself, so `t3code-bin` never shows as installed. The step remembers an
   installer that finished and does not run it again.
 - **Some installers sign in.** `omarchy-install-service-tailscale` runs
-  `tailscale up`. To leave signing in to the person, carry the `tailscale`
-  package and `tailscaled.service` instead.
+  `tailscale up`, which would stop the restore to wait on a browser. The
+  inspector leaves such installers out and carries the package; carry
+  `tailscaled.service` with it. The Tailscale step lists signing in for afterwards.
 - **Some installers ask.** T3 Code asks for a channel and Voxtype asks before
   downloading its model, in the bootstrap popup.
 - **Some installers open their app.** ChatGPT, Spotify and T3 Code start the app
@@ -85,10 +86,11 @@ The fix that worked:
      printf '%s\n' 'source /etc/makepkg.conf' \
        'for c in /etc/makepkg.conf.d/*.conf; do [[ -r $c ]] && source "$c"; done' \
        'PACMAN_AUTH=(sudo)' >"$build/makepkg.conf"
-     (cd "$build" && makepkg --config makepkg.conf --syncdeps --install --rmdeps --needed --noconfirm)
-     status=$?
+     # A failed build is listed for afterwards rather than stopping the task:
+     # the lines after it (another pinned package) still run.
+     (cd "$build" && makepkg --config makepkg.conf --syncdeps --install --rmdeps --needed --noconfirm) ||
+       echo "<name> did not build: see pkgbuilds/<name>" | tee -a "${LATER_FILE:-/dev/null}"
      rm -rf "$build"
-     exit "$status"
    fi
    ```
 

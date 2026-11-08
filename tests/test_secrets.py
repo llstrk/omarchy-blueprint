@@ -25,6 +25,14 @@ class TestScan(unittest.TestCase):
         self.assertIn("ghp_…", out)
         self.assertNotIn("a" * 36, out)
 
+    def test_wireguard_keys_stop_the_commit(self):
+        rc, out = self.scan("[Interface]\nPrivateKey = " + "yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=" + "\n")
+        self.assertEqual(rc, 1)
+
+    def test_wifi_passwords_warn(self):
+        rc, out = self.scan("[wifi-security]\npsk=Summer2024house\n")
+        self.assertIn("look like credentials", out)
+
     def test_password_values_warn_without_stopping(self):
         # These were never shown before: an empty pattern file hid every warning.
         rc, out = self.scan("password = hunter2hunter2\n")

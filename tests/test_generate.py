@@ -30,7 +30,26 @@ class TestToml(unittest.TestCase):
         self.assertIn('"~/Work/here" = { url = "https://example.com/here.git" }', toml)
         self.assertNotIn("gone.git", toml)
         task = "\n".join(b.task_lines(b.mine("")))
-        self.assertIn('GIT_TERMINAL_PROMPT=0 git clone --quiet "https://example.com/gone.git" "$HOME/Work/gone" 2>/dev/null ||', task)
+        self.assertIn('git clone --quiet "https://example.com/gone.git" "$HOME/Work/gone" 2>/dev/null ||', task)
+        self.assertIn('| tee -a "${LATER_FILE:-/dev/null}"', task)  # listed at the end of the restore
+
+    def test_repo_addresses_work_on_a_new_machine(self):
+        # A new machine has no SSH key on GitHub yet, and a password never goes in the repo.
+        b = build([it("repo", "~/Work/a", path="~/Work/a", url="git@github.com:me/a.git"),
+                   it("repo", "~/Work/b", path="~/Work/b", url="ssh://git@github.com/me/b"),
+                   it("repo", "~/Work/c", path="~/Work/c", url="https://me:hunter22@github.com/me/c.git"),
+                   it("repo", "~/Work/d", path="~/Work/d", url="git@gitlab.com:me/d.git"),
+                   it("repo", "~/Work/e", path="~/Work/e", url="https://me:hunter22@git.example.com/e.git")])
+        toml = b.toml("")
+        task = "\n".join(b.task_lines(b.mine("")))
+        self.assertIn('"~/Work/a" = { url = "https://github.com/me/a.git" }', toml)
+        self.assertIn('"~/Work/b" = { url = "https://github.com/me/b.git" }', toml)
+        self.assertIn('"~/Work/c" = { url = "https://github.com/me/c.git" }', toml)
+        # Other hosts need their own login: tried in the task, where failing does not stop the run.
+        self.assertNotIn("gitlab", toml)
+        self.assertIn('git clone --quiet "git@gitlab.com:me/d.git"', task)
+        self.assertIn('git clone --quiet "https://git.example.com/e.git"', task)
+        self.assertNotIn("hunter22", toml + task)
 
     def test_private_dotfiles_keep_their_permissions(self):
         b = build([it("identity", "ssh-config", path="~/.ssh/config", mode="600"),
@@ -105,7 +124,7 @@ class TestRepo(unittest.TestCase):
 
     def test_questions_come_first_and_nothing_waits_mid_run(self):
         repo = self.generate([it("identity", "ssh-keys", "step"), it("identity", "tailscale", "step"),
-                              it("identity", "fingerprint", "step")])
+                              it("package", "tailscale", "carry"), it("identity", "fingerprint", "step")])
         steps = sorted(p.name for p in (repo / "steps").iterdir())
         self.assertLess(steps.index("25-ssh-keys.sh"), steps.index("40-bootstrap.sh"))
         # A login or a finger on the reader would stop the run: listed for afterwards instead.

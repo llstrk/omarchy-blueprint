@@ -32,7 +32,9 @@ instead. The generated github step does.
 ## A clone fails and the whole repos phase stops
 
 One repo in `[bootstrap.repos]` cannot be cloned: it is private and gh is not set
-up, it was deleted, or the account is gone. Either:
+up, it was deleted, or the account is gone. (The generator already writes GitHub
+repos as HTTPS addresses, which the GitHub sign-in covers, and moves repos that
+need an SSH key or a login of their own into the task.) Either:
 
 - run the github step first (`./bootstrap.sh --only github`), or
 - move the repo out of `[bootstrap.repos]` into the task as a clone allowed to fail
@@ -43,6 +45,14 @@ up, it was deleted, or the account is gone. Either:
 The bootstrap step applies everything else and lists the package. Check the
 build log in `~/.local/state/<repo>/restore-*.log`. If a dependency moved on,
 build a pinned PKGBUILD in the task (see `packages.md`), then run `bootstrap.sh` again.
+
+## "error: target not found: ..."
+
+A package was renamed or dropped from the Arch repos since the blueprint was
+made. pacman installs a list all or nothing, so the bootstrap step installs the
+rest itself, applies everything after the packages, and lists the missing one.
+Find what replaced it (`pacman -Ss`, the Arch news) and change or remove it in
+`mise.toml`. A service from that package fails until then.
 
 ## "No AUR package found for ..."
 

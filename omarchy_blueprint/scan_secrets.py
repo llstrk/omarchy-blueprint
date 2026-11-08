@@ -17,11 +17,12 @@ from .env import looks_text, split_lines, walk
 STRONG = re.compile(
     r"-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}"
     r"|tskey-[a-z]+-[A-Za-z0-9]{10,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|sk-ant-[A-Za-z0-9_-]{20,}"
-    r"|sk-[A-Za-z0-9]{32,}|glpat-[A-Za-z0-9_-]{20}|AIza[0-9A-Za-z_-]{35}")
+    r"|sk-[A-Za-z0-9]{32,}|glpat-[A-Za-z0-9_-]{20}|AIza[0-9A-Za-z_-]{35}"
+    r"|(?:PrivateKey|PresharedKey)\s*=\s*[A-Za-z0-9+/]{43}=")  # WireGuard
 # A key that names a credential, set to a literal value. The value must look
 # like a secret (a digit in it, or long), so code such as authUrl = parsed.authUrl
 # and settings such as token = "terminal" stay quiet.
-WEAK = re.compile(r"""(password|passwd|secret|token|api[_-]?key|auth[_-]?key|credential)[A-Za-z_]*["']?\s*[=:]\s*["']?([^\s"'(){};,]{8,})""", re.I)
+WEAK = re.compile(r"""(password|passwd|secret|token|api[_-]?key|auth[_-]?key|private[_-]?key|credential|psk)[A-Za-z_]*["']?\s*[=:]\s*["']?([^\s"'(){};,]{8,})""", re.I)
 COMMENT = re.compile(r"^\s*#")
 
 
