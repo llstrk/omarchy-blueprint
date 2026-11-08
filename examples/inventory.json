@@ -1,0 +1,549 @@
+{
+  "schema": 1,
+  "generated": "2026-11-01T10:00:00+01:00",
+  "omarchy": {
+    "version": "4.0.6-1",
+    "path": "/usr/share/omarchy"
+  },
+  "mise": "2026.10.25",
+  "user": "alex",
+  "home": "/home/alex",
+  "dots_origin": "",
+  "machine": {
+    "vendor": "LENOVO",
+    "product": "ThinkPad X1 Carbon Gen 12",
+    "family": "ThinkPad X1 Carbon Gen 12",
+    "cpu": "intel",
+    "cpu_model": "Intel(R) Core(TM) Ultra 7 155U",
+    "gpus": [
+      "VGA compatible controller: Intel Corporation Meteor Lake-P [Intel Graphics]"
+    ],
+    "laptop": true,
+    "fingerprint_reader": true,
+    "touchscreen": false,
+    "monitors": [
+      {
+        "name": "eDP-1",
+        "description": "Built-in display",
+        "width": 2880,
+        "height": 1800,
+        "refreshRate": 120,
+        "scale": 2
+      }
+    ],
+    "hostname": "x1",
+    "kernel": "7.2.5-3-omarchy"
+  },
+  "items": [
+    {
+      "id": "package:keyd",
+      "kind": "package",
+      "name": "keyd",
+      "class": "carry",
+      "module": null,
+      "reason": "Installed by you, not part of Omarchy.",
+      "facts": {
+        "source": "pacman",
+        "version": "2.6.0-5",
+        "description": "A key remapping daemon for linux"
+      }
+    },
+    {
+      "id": "package:syncthing",
+      "kind": "package",
+      "name": "syncthing",
+      "class": "carry",
+      "module": null,
+      "reason": "Installed by you, not part of Omarchy.",
+      "facts": {
+        "source": "pacman",
+        "version": "2.0.10-1",
+        "description": "Open Source Continuous Replication / Cluster Synchronization Thing"
+      }
+    },
+    {
+      "id": "package:visual-studio-code-bin",
+      "kind": "package",
+      "name": "visual-studio-code-bin",
+      "class": "carry",
+      "module": null,
+      "reason": "Installed from the AUR, not part of Omarchy.",
+      "facts": {
+        "source": "aur",
+        "version": "1.105.1-1",
+        "description": "Visual Studio Code (vscode)"
+      }
+    },
+    {
+      "id": "package:tailscale",
+      "kind": "package",
+      "name": "tailscale",
+      "class": "step",
+      "module": null,
+      "reason": "Omarchy installs this with omarchy-install-service-tailscale. Run that instead of installing the package.",
+      "facts": {
+        "source": "pacman",
+        "installer": "omarchy-install-service-tailscale"
+      }
+    },
+    {
+      "id": "package:linux",
+      "kind": "package",
+      "name": "linux",
+      "class": "skip",
+      "module": null,
+      "reason": "Put down by the Omarchy installer before first boot.",
+      "facts": {
+        "source": "pacman"
+      }
+    },
+    {
+      "id": "package:tlp",
+      "kind": "package",
+      "name": "tlp",
+      "class": "module",
+      "module": "lenovo",
+      "reason": "Installed by you, not part of Omarchy.",
+      "facts": {
+        "source": "pacman",
+        "description": "Linux Advanced Power Management"
+      }
+    },
+    {
+      "id": "package-removed:1password-beta",
+      "kind": "package-removed",
+      "name": "1password-beta",
+      "class": "review",
+      "module": null,
+      "reason": "In Omarchy's package list but not installed here. If you removed it on purpose, the new machine needs the same removal.",
+      "facts": {
+        "source": "omarchy-list"
+      }
+    },
+    {
+      "id": "config:~/.config/hypr/bindings.lua",
+      "kind": "config",
+      "name": "~/.config/hypr/bindings.lua",
+      "class": "carry",
+      "module": null,
+      "reason": "Edited from Omarchy's default (24 lines differ).",
+      "facts": {
+        "path": "~/.config/hypr/bindings.lua",
+        "text": true,
+        "mode": "644",
+        "lines_changed": 24
+      }
+    },
+    {
+      "id": "config:~/.config/hypr/input.lua",
+      "kind": "config",
+      "name": "~/.config/hypr/input.lua",
+      "class": "carry",
+      "module": null,
+      "reason": "Edited from Omarchy's default (6 lines differ).",
+      "facts": {
+        "path": "~/.config/hypr/input.lua",
+        "text": true,
+        "mode": "644",
+        "lines_changed": 6
+      }
+    },
+    {
+      "id": "config:~/.config/hypr/monitors.lua",
+      "kind": "config",
+      "name": "~/.config/hypr/monitors.lua",
+      "class": "module",
+      "module": "lenovo",
+      "reason": "Edited from Omarchy's default (4 lines differ). Describes this machine's displays, so it belongs in a hardware module.",
+      "facts": {
+        "path": "~/.config/hypr/monitors.lua",
+        "text": true,
+        "mode": "644"
+      }
+    },
+    {
+      "id": "config:~/.config/starship.toml",
+      "kind": "config",
+      "name": "~/.config/starship.toml",
+      "class": "carry",
+      "module": null,
+      "reason": "Edited from Omarchy's default (12 lines differ).",
+      "facts": {
+        "path": "~/.config/starship.toml",
+        "text": true,
+        "mode": "644"
+      }
+    },
+    {
+      "id": "config:~/.config/syncthing/config.xml",
+      "kind": "config",
+      "name": "~/.config/syncthing/config.xml",
+      "class": "review",
+      "module": null,
+      "reason": "Not shipped by Omarchy. Small text file, probably a setting. Check it holds nothing private.",
+      "facts": {
+        "path": "~/.config/syncthing/config.xml",
+        "text": true,
+        "mode": "600"
+      }
+    },
+    {
+      "id": "config-dir:~/.config/Code",
+      "kind": "config-dir",
+      "name": "~/.config/Code",
+      "class": "note",
+      "module": null,
+      "reason": "App data (912 files, 48210 KB): caches, databases or sign-ins. Back it up separately if it matters.",
+      "facts": {
+        "path": "~/.config/Code",
+        "dir": true,
+        "files": 912,
+        "kb": 48210
+      }
+    },
+    {
+      "id": "config:~/.config/Code/User/settings.json",
+      "kind": "config",
+      "name": "~/.config/Code/User/settings.json",
+      "class": "review",
+      "module": null,
+      "reason": "Not shipped by Omarchy. Small text file, probably a setting. Check it holds nothing private.",
+      "facts": {
+        "path": "~/.config/Code/User/settings.json",
+        "text": true,
+        "mode": "644"
+      }
+    },
+    {
+      "id": "desktop-entry:~/.local/share/applications/Linear.desktop",
+      "kind": "desktop-entry",
+      "name": "~/.local/share/applications/Linear.desktop",
+      "class": "carry",
+      "module": null,
+      "reason": "A desktop entry made with Omarchy's web app or TUI installer. Carry it, or recreate it with the same installer.",
+      "facts": {
+        "path": "~/.local/share/applications/Linear.desktop",
+        "title": "Linear",
+        "text": true,
+        "mode": "644"
+      }
+    },
+    {
+      "id": "system-file:/etc/keyd/default.conf",
+      "kind": "system-file",
+      "name": "/etc/keyd/default.conf",
+      "class": "carry",
+      "module": null,
+      "reason": "No package owns it.",
+      "facts": {
+        "path": "/etc/keyd/default.conf",
+        "source": "unowned",
+        "mode": "644",
+        "owner": "root",
+        "group": "root",
+        "readable": true,
+        "text": true
+      }
+    },
+    {
+      "id": "system-file:/etc/tlp.d/10-battery.conf",
+      "kind": "system-file",
+      "name": "/etc/tlp.d/10-battery.conf",
+      "class": "module",
+      "module": "lenovo",
+      "reason": "No package owns it.",
+      "facts": {
+        "path": "/etc/tlp.d/10-battery.conf",
+        "source": "unowned",
+        "mode": "644",
+        "owner": "root",
+        "group": "root",
+        "readable": true,
+        "text": true
+      }
+    },
+    {
+      "id": "system-file:/etc/ufw/user.rules",
+      "kind": "system-file",
+      "name": "/etc/ufw/user.rules",
+      "class": "review",
+      "module": null,
+      "reason": "Changed from what ufw installed. Firewall rules: Omarchy adds some itself. Compare with sudo ufw status, and carry your own rules as ufw commands in a step rather than as files.",
+      "facts": {
+        "path": "/etc/ufw/user.rules",
+        "source": "modified",
+        "package": "ufw"
+      }
+    },
+    {
+      "id": "service:keyd.service",
+      "kind": "service",
+      "name": "keyd.service",
+      "class": "carry",
+      "module": null,
+      "reason": "Enabled by you.",
+      "facts": {
+        "scope": "system",
+        "unit": "keyd.service",
+        "unit_from": "package",
+        "active": "active",
+        "package": "keyd"
+      }
+    },
+    {
+      "id": "service:syncthing.service",
+      "kind": "service",
+      "name": "syncthing.service",
+      "class": "carry",
+      "module": null,
+      "reason": "Enabled by you.",
+      "facts": {
+        "scope": "user",
+        "unit": "syncthing.service",
+        "unit_from": "package",
+        "active": "active",
+        "package": "syncthing"
+      }
+    },
+    {
+      "id": "service:tlp.service",
+      "kind": "service",
+      "name": "tlp.service",
+      "class": "module",
+      "module": "lenovo",
+      "reason": "Enabled by you.",
+      "facts": {
+        "scope": "system",
+        "unit": "tlp.service",
+        "unit_from": "package",
+        "active": "active",
+        "package": "tlp"
+      }
+    },
+    {
+      "id": "service:docker.socket",
+      "kind": "service",
+      "name": "docker.socket",
+      "class": "skip",
+      "module": null,
+      "reason": "Omarchy enables this itself.",
+      "facts": {
+        "scope": "system",
+        "unit": "docker.socket"
+      }
+    },
+    {
+      "id": "repo:~/code/dotscripts",
+      "kind": "repo",
+      "name": "~/code/dotscripts",
+      "class": "carry",
+      "module": null,
+      "reason": "The desktop runs from it.",
+      "facts": {
+        "path": "~/code/dotscripts",
+        "url": "https://github.com/example/dotscripts.git",
+        "branch": "main",
+        "dirty": 0,
+        "ahead": 0,
+        "reachable": true,
+        "used_by": [
+          "~/.local/bin/wsclean -> ~/code/dotscripts/wsclean"
+        ]
+      }
+    },
+    {
+      "id": "repo:~/code/website",
+      "kind": "repo",
+      "name": "~/code/website",
+      "class": "skip",
+      "module": null,
+      "reason": "A development checkout: nothing on the desktop runs from it. Clone it by hand when needed.",
+      "facts": {
+        "path": "~/code/website",
+        "url": "https://github.com/example/website.git",
+        "dirty": 0,
+        "ahead": 0,
+        "reachable": true,
+        "used_by": []
+      }
+    },
+    {
+      "id": "repo:~/code/experiments",
+      "kind": "repo",
+      "name": "~/code/experiments",
+      "class": "note",
+      "module": null,
+      "reason": "A development checkout, not carried. It has no remote, so it exists only on this machine.",
+      "facts": {
+        "path": "~/code/experiments",
+        "url": "",
+        "dirty": 3,
+        "ahead": null,
+        "reachable": null,
+        "used_by": []
+      }
+    },
+    {
+      "id": "plugin:example.weather",
+      "kind": "plugin",
+      "name": "example.weather",
+      "class": "carry",
+      "module": null,
+      "reason": "A checkout of its own repo.",
+      "facts": {
+        "id": "example.weather",
+        "path": "~/.config/omarchy/plugins/example.weather",
+        "enabled": "true",
+        "deploy": "git",
+        "url": "https://github.com/example/omarchy-weather.git",
+        "reachable": true
+      }
+    },
+    {
+      "id": "plugin:alex.focus",
+      "kind": "plugin",
+      "name": "alex.focus",
+      "class": "review",
+      "module": null,
+      "reason": "A plain folder (6 files) with no repo behind it. Carry it as files, or give it its own repo (one plugin per repo, manifest.json at the root).",
+      "facts": {
+        "id": "alex.focus",
+        "path": "~/.config/omarchy/plugins/alex.focus",
+        "enabled": "true",
+        "deploy": "copy",
+        "files": 6
+      }
+    },
+    {
+      "id": "link:~/.local/bin/wsclean",
+      "kind": "link",
+      "name": "~/.local/bin/wsclean",
+      "class": "carry",
+      "module": null,
+      "reason": "Links into ~/code/dotscripts. Recreate it in the bootstrap task, after repos are cloned.",
+      "facts": {
+        "path": "~/.local/bin/wsclean",
+        "target": "~/code/dotscripts/wsclean"
+      }
+    },
+    {
+      "id": "command:~/.local/bin/backup-now",
+      "kind": "command",
+      "name": "~/.local/bin/backup-now",
+      "class": "carry",
+      "module": null,
+      "reason": "A script you wrote.",
+      "facts": {
+        "path": "~/.local/bin/backup-now",
+        "text": true,
+        "mode": "755",
+        "header": "Run a restic backup of ~/Documents now."
+      }
+    },
+    {
+      "id": "tool:npm:@biomejs/biome",
+      "kind": "tool",
+      "name": "npm:@biomejs/biome",
+      "class": "review",
+      "module": null,
+      "reason": "Installed with npm, outside mise. Add \"npm:@biomejs/biome\" to mise's global tools to carry it.",
+      "facts": {
+        "manager": "npm",
+        "mise": "npm:@biomejs/biome"
+      }
+    },
+    {
+      "id": "config:~/.config/mise/config.toml",
+      "kind": "config",
+      "name": "~/.config/mise/config.toml",
+      "class": "carry",
+      "module": null,
+      "reason": "mise's global config: 4 tools, installed at the end of mise bootstrap.",
+      "facts": {
+        "path": "~/.config/mise/config.toml",
+        "text": true,
+        "mode": "644",
+        "tools": [
+          {
+            "tool": "node",
+            "requested": "lts"
+          },
+          {
+            "tool": "gh",
+            "requested": "latest"
+          },
+          {
+            "tool": "ruby",
+            "requested": "3.4"
+          },
+          {
+            "tool": "usage",
+            "requested": "latest"
+          }
+        ]
+      }
+    },
+    {
+      "id": "identity:github",
+      "kind": "identity",
+      "name": "github",
+      "class": "step",
+      "module": null,
+      "reason": "Signed in to GitHub with gh. Private repos need this before they can clone, so it comes first.",
+      "facts": {}
+    },
+    {
+      "id": "identity:ssh-keys",
+      "kind": "identity",
+      "name": "ssh-keys",
+      "class": "step",
+      "module": null,
+      "reason": "SSH keys (id_ed25519). Create a new key on the new machine, or restore these from a backup. Never commit them.",
+      "facts": {
+        "keys": [
+          "id_ed25519"
+        ]
+      }
+    },
+    {
+      "id": "identity:fingerprint",
+      "kind": "identity",
+      "name": "fingerprint",
+      "class": "step",
+      "module": null,
+      "reason": "Fingerprints are enrolled. Enrollment is per reader: enroll again on the new machine.",
+      "facts": {}
+    },
+    {
+      "id": "identity:network-connections",
+      "kind": "identity",
+      "name": "network-connections",
+      "class": "note",
+      "module": null,
+      "reason": "4 Wi-Fi or VPN connections. Their passwords are not carried: join them again.",
+      "facts": {
+        "count": 4
+      }
+    },
+    {
+      "id": "personal-data:~/Documents",
+      "kind": "personal-data",
+      "name": "~/Documents",
+      "class": "note",
+      "module": null,
+      "reason": "Personal files (2310 MB). Use a backup (restic, a synced drive), not this repo.",
+      "facts": {
+        "path": "~/Documents",
+        "kb": 2365440
+      }
+    }
+  ],
+  "counts": {
+    "carry": 15,
+    "module": 4,
+    "note": 4,
+    "review": 6,
+    "skip": 3,
+    "step": 4
+  }
+}

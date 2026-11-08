@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Inspect this Omarchy machine (read-only) and write out/inventory.json."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from omarchy_blueprint.collect import main  # noqa: E402
+
+sys.exit(main())
