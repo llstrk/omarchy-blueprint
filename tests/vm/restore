@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Run a whole restore in a blank test VM through the real popup, answering the
+# way a person would, and print a timeline: when each step started, every
+# answer, how often sudo asked for the password, and checks afterwards.
+#
+#   tests/vm/fresh && tests/vm/restore SETUP_REPO [ANSWERS]
+#
+# SETUP_REPO is a generated setup repo (a git repo: its current branch is what
+# the VM gets). ANSWERS defaults to answers.default next to this script. Each of
+# its lines is  <regex matched against the question> TAB y | n | enter | password.
+# An unknown question stops the run and leaves the VM as it is.
+#
+# Exits with bootstrap.sh's exit code, or 2 (unknown question), 3 (the popup
+# lost the keyboard) or 1 (timed out).
+set -uo pipefail
+source "$(dirname "$0")/lib.sh"
+need_password
+repo=$(cd "${1:?usage: tests/vm/restore SETUP_REPO [ANSWERS]}" && pwd)
+answers=$(realpath "${2:-$HERE/answers.default}")
+name=$(basename "$repo")
+branch=$(git -C "$repo" symbolic-ref --short HEAD) || exit 1
+if ! running || ! vm true 2>/dev/null; then
+  echo "VM $N is not up: run tests/vm/fresh first." >&2
+  exit 1
+fi
+[[ -z $(git -C "$repo" status --porcelain) ]] || echo "Note: $repo has uncommitted changes; the VM gets the last commit."
+start=$(date +%s)
+stamp() { local s=$(($(date +%s) - start)); printf '%3d:%02d  %s\n' $((s / 60)) $((s % 60)) "$*"; }
+
+# The setup repo goes over as a bundle, cloned where docs/restore.md puts it.
+serve_up
+git -C "$repo" bundle create -q "$VM_DIR/serve/$name.bundle" "$branch" || exit 1
+# Private repos come from copies in serve/git, so the VM never needs a GitHub
+# login. The redirect goes in ~/.gitconfig: the restore replaces ~/.config/git/config.
+if [[ -n ${MIRROR_GITHUB_USER-} && -d $VM_DIR/serve/git ]]; then
+  vm "git config --file ~/.gitconfig url.http://10.0.2.2:8765/git/.insteadOf https://github.com/$MIRROR_GITHUB_USER/"
+fi
+vm "[ -d ~/Work/$name ] || { curl -sfo /tmp/setup.bundle http://10.0.2.2:8765/$name.bundle &&
+  git clone -q -b $branch /tmp/setup.bundle ~/Work/$name; }
+  git -C ~/Work/$name log --oneline -1" | sed 's/^/        repo: /'
+
+# What to look for every few seconds: an open question, the current step, the end.
+titles=$(grep -ho '^header "[^"]*"' "$repo"/steps/*.sh | sed 's/^header "//; s/"$//')
+vm 'cat > /tmp/titles' <<<"$titles"
+vm 'cat > /tmp/poll; chmod +x /tmp/poll' <<'EOF'
+#!/bin/bash
+# sudo waiting for a password: a sudo with no child that is not the -n refresh.
+for p in $(pgrep -x sudo); do
+  [ -z "$(pgrep -P "$p")" ] && ! tr '\0' ' ' </proc/$p/cmdline | grep -q ' -n ' && echo "ask $p sudo password"
+done
+for p in $(pgrep -x gum); do
+  c=$(tr '\0' ' ' </proc/$p/cmdline)
+  [[ $c == "gum confirm"* || $c == "gum choose"* || $c == "gum input"* ]] && echo "ask $p $c"
+done
+log=$(ls -t ~/.local/state/*/restore-*.log 2>/dev/null | head -1)
+[ -n "$log" ] && echo "step $(sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' "$log" | sed 's/\r//g; s/[[:space:]]*$//' | grep -axF -f /tmp/titles | tail -1)"
+pgrep -af '^/bin/bash .*omarchy-show-done' | head -1 | sed 's/.*omarchy-show-done */done /'
+EOF
+
+# Type an answer only when the popup has the keyboard and the screen is not
+# locked: a person would not have to fix focus first.
+answer() {
+  local state
+  # shellcheck disable=SC2016 # expands in the VM
+  state=$(vm 'export XDG_RUNTIME_DIR=/run/user/1000 HYPRLAND_INSTANCE_SIGNATURE=$(ls /run/user/1000/hypr | head -1)
+    echo "focus=$(hyprctl activewindow -j | jq -r .title) ws=$(hyprctl activewindow -j | jq -r .workspace.name) locked=$(pgrep -c hyprlock)"')
+  [[ $state == "focus=Omarchy ws=1 locked=0" ]] || return 1
+  qmp type "$1"
+}
+
+# Open a terminal and start the restore there, as a person would.
+qmp key meta_l-ret
+sleep 3
+qmp type "\$HOME/Work/$name/bootstrap.sh\n" # typed into the VM, where it expands
+stamp "started ~/Work/$name/bootstrap.sh"
+
+step="" seen="" sudos=0 asked=0
+for _ in $(seq 2400); do # up to 2 hours
+  sleep 3
+  out=$(vm /tmp/poll 2>/dev/null) || continue
+  now=$(sed -n 's/^step //p' <<<"$out")
+  [[ -n $now && $now != "$step" ]] && { step=$now; stamp "step: $step"; }
+  if grep -q '^done' <<<"$out"; then
+    code=$(sed -n 's/^done *//p' <<<"$out" | awk '{print $1}')
+    stamp "finished, exit ${code:-?}: $asked questions, sudo asked $sudos times"
+    answer '\n' || true # close Omarchy's Done screen
+    sleep 2
+    vm "cd ~/Work/$name; export XDG_RUNTIME_DIR=/run/user/1000 HYPRLAND_INSTANCE_SIGNATURE=\$(ls /run/user/1000/hypr | head -1)
+      echo \"        \$(mise bootstrap plan 2>&1 | grep -m1 '^Plan:')\"
+      echo \"        pending: \$(mise bootstrap --dry-run 2>&1 | grep -cE '^(cp |yay |sudo |pacman |git clone|systemctl)')\"
+      echo \"        failed units: \$(systemctl --failed --no-legend | wc -l), user: \$(systemctl --user --failed --no-legend | wc -l)\"
+      echo \"        Hyprland config errors: \$(hyprctl configerrors | grep -cv '^\\s*\$')\"
+      echo \"        left running: \$(pgrep -fc '[/]$name/bootstrap.sh|^sudo [-]n -v')\""
+    exit "${code:-1}"
+  fi
+  q=$(grep -m1 '^ask ' <<<"$out") || { seen=""; continue; }
+  # Answer a question only once it has been there for two polls: a sudo that
+  # has just started has no child yet either.
+  [[ $q != "$seen" ]] && { seen=$q; continue; }
+  text=${q#ask * }
+  key=""
+  while IFS=$'\t' read -r re k; do
+    [[ -z $re || $re == \#* ]] && continue
+    [[ $text =~ $re ]] && { key=$k; break; }
+  done <"$answers"
+  short=$(sed -E 's/^gum (confirm|choose|input) *//; s/ --[a-z-]+(=[^ ]*)?//g' <<<"$text" | cut -c1-70)
+  case $key in
+    y | n) send=$key ;;
+    enter) send='\n' ;;
+    password) send="$VM_PASSWORD\\n"; ((sudos++)) ;;
+    *) stamp "UNKNOWN QUESTION, stopping: $text"; exit 2 ;;
+  esac
+  answer "$send" || { stamp "popup lost the keyboard at: $short"; exit 3; }
+  ((asked++))
+  stamp "  answered $key: $short"
+  seen=""
+  sleep 2
+done
+stamp "timed out"
+exit 1

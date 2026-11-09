@@ -1,0 +1,16 @@
+# How tests/vm/restore answers, first match wins: regex <TAB> y | n | enter | password
+# A person restoring their setup on a new machine, without their GitHub login.
+sudo password	password
+Sign in to GitHub now	n
+Install gh with mise	n
+module anyway	n
+Include the .* module	n
+Trust it	y
+Create a new ed25519 key	n
+Apply all of this now	y
+Run the bootstrap task again anyway	n
+Enroll a finger	n
+tailscale up	n
+# Omarchy's own installers
+^gum choose	enter
+Install Voxtype	y

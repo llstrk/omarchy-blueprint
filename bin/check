@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# The checks that take seconds, run on this machine before every push (the
+# pre-push hook in .githooks runs this). Exits 0 only when every check passes.
+#
+#   bin/check            everything below
+#   bin/check --quick    skip generating a repo from out/
+#
+# With out/inventory.json and out/decisions.json present (bin/inspect, then the
+# page), it also generates a setup repo from them and checks it is a no-op on
+# this machine, as AGENTS.md phase 7 does. The restore itself is tested in a VM:
+# see docs/validation.md.
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+KIT=$PWD
+quick=0
+[[ ${1-} == --quick ]] && quick=1
+
+failed=()
+step() { printf '  %-44s' "$1"; }
+pass() { echo "ok${1:+  ($1)}"; }
+fail() {
+  echo "FAILED"
+  [[ -n ${1-} ]] && sed 's/^/      /' <<<"$1" | tail -25
+  failed+=("$name")
+}
+# The secret scan only warns about lines that look like credentials. They do
+# not stop a push, but they are shown so someone reads them.
+warned() {
+  local lines
+  lines=$(sed -n '/^Lines that look like credentials/,$p' <<<"$1" | tail -n +2)
+  if [[ -z $lines ]]; then pass; else
+    pass "$(wc -l <<<"$lines") lines to read"
+    sed 's/^ */      /' <<<"$lines"
+  fi
+}
+shellcheck() { mise x shellcheck@0.11.0 -- shellcheck "$@"; }
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+echo "The kit"
+
+name="unit tests"
+step "$name"
+if out=$(python3 -m unittest discover -q tests 2>&1); then
+  pass "$(grep -oE '^Ran [0-9]+ tests' <<<"$out" | cut -d' ' -f2) tests"
+else fail "$out"; fi
+
+name="shellcheck"
+step "$name"
+# The template is what every setup repo is made of: every level of note. The
+# kit's own scripts: warnings and errors. SC1091: the template sources lib/ui.sh
+# by a path only a generated repo has.
+if out=$({ shellcheck -x -e SC1091 template/bootstrap.sh template/lib/*.sh template/recipes/*.sh &&
+  shellcheck -x -S warning bin/check bin/check-builds .githooks/pre-push tests/vm/lib.sh \
+    tests/vm/fresh tests/vm/restore tests/vm/run tests/vm/stop tests/vm/ssh tests/vm/setup-guest; } 2>&1); then
+  pass
+else fail "$out"; fi
+
+name="page script parses"
+step "$name"
+if ! command -v node >/dev/null; then
+  pass "skipped: no node"
+else
+  python3 - "$tmp/page.js" <<'EOF'
+import re, sys
+html = open("blueprint/index.html").read()
+code = [m.group(1) for m in re.finditer(r"<script(?![^>]*type=\"application/json\")[^>]*>(.*?)</script>", html, re.S)]
+open(sys.argv[1], "w").write("\n".join(code))
+EOF
+  if out=$(node --check "$tmp/page.js" 2>&1); then pass; else fail "$out"; fi
+fi
+
+name="no em dashes"
+step "$name"
+# Tracked files and new ones git does not ignore. The dash is written as its
+# UTF-8 bytes so this file does not match itself.
+if out=$(git grep -n --untracked $'\xe2\x80\x94' -- . ':!*.json' 2>&1); then fail "$out"; else pass; fi
+
+name="no secrets"
+step "$name"
+# What git would commit: tracked files and new ones it does not ignore (not out/).
+mkdir "$tmp/kit"
+git ls-files -z -co --exclude-standard | tar --null -T - -cf - 2>/dev/null | tar -xf - -C "$tmp/kit"
+out=$(cd "$tmp/kit" && "$KIT/bin/check-secrets" . 2>&1)
+if (($? != 0)); then fail "$out"; else warned "$out"; fi
+
+if ((quick)); then
+  echo
+  echo "Skipped generating from out/ (--quick)."
+elif [[ ! -f out/inventory.json || ! -f out/decisions.json ]]; then
+  echo
+  echo "Skipped generating from out/: run bin/inspect and the page (bin/blueprint) first."
+else
+  echo
+  echo "A setup repo generated from out/, on this machine"
+  repo=$tmp/setup
+  name="generates"
+  step "$name"
+  if out=$(bin/generate --allow-undecided "$repo" 2>&1); then pass; else fail "$out"; fi
+
+  if [[ -x $repo/bootstrap.sh ]]; then
+    cd "$repo" || exit 1
+    export MISE_TRUSTED_CONFIG_PATHS="$repo:$HOME/.config/mise"
+    # The modules this machine matches, as the modules step would pick them.
+    envs=()
+    for d in modules/*/detect; do [[ -x $d ]] && "$d" >/dev/null 2>&1 && envs+=("$(basename "$(dirname "$d")")"); done
+    MISE_ENV=$(IFS=,; echo "${envs[*]}")
+    export MISE_ENV
+
+    name="plan is empty"
+    step "$name"
+    plan=$(mise bootstrap plan 2>&1)
+    summary=$(grep -m1 '^Plan:' <<<"$plan")
+    if [[ $summary == "Plan: 0 create, 0 update,"* ]]; then
+      pass "${MISE_ENV:+modules: $MISE_ENV}"
+    else
+      fail "${summary:-$plan}
+$(grep -E '^(create|update) ' <<<"$plan")
+A file changed since bin/inspect? Run it again (and keep your decisions)."
+    fi
+
+    name="dry run has nothing but the task"
+    step "$name"
+    pending=$(mise bootstrap --dry-run 2>&1 | grep -E '^(cp |yay |sudo |pacman |git clone|systemctl)')
+    if [[ -z $pending ]]; then pass; else fail "$pending"; fi
+
+    name="bootstrap.sh --check offers nothing"
+    step "$name"
+    out=$(./bootstrap.sh --check --no-popup 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
+    rc=${PIPESTATUS[0]}
+    offers=$(grep -E '^  [•!] |✗' <<<"$out")
+    if ((rc == 0)) && [[ -z $offers ]]; then pass; else fail "exit $rc
+$offers"; fi
+
+    name="shellcheck on it"
+    step "$name"
+    if out=$(shellcheck -x bootstrap.sh lib/*.sh steps/*.sh modules/*/detect 2>&1); then pass; else fail "$out"; fi
+
+    name="no secrets in it"
+    step "$name"
+    out=$("$KIT/bin/check-secrets" . 2>&1)
+    if (($? != 0)); then fail "$out"; else warned "$out"; fi
+    cd "$KIT" || exit 1
+  fi
+fi
+
+echo
+if ((${#failed[@]})); then
+  echo "FAILED: ${failed[*]}"
+  exit 1
+fi
+echo "All checks passed."

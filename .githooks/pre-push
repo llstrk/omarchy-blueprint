@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run the fast checks before anything leaves this machine. Turn it on once per
+# clone with: git config core.hooksPath .githooks
+# Skipping it (git push --no-verify) should be rare, and said in the PR.
+exec "$(git rev-parse --show-toplevel)/bin/check"
