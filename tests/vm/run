@@ -1,42 +1,7 @@
-#!/usr/bin/env bash
-# Start a test VM with QEMU. Runs in the foreground; fresh starts it in the background.
-#
-#   tests/vm/run install ISO   install Omarchy from ISO onto disk.qcow2 (once)
-#   tests/vm/run base          boot the installed disk itself: changes stick
-#   tests/vm/run test          boot a throwaway copy of the installed disk; every
-#                              test run starts again from the clean install
-#
-# Headless unless WINDOW=1. ssh reaches it on 127.0.0.1:2222 (VM=2: 2223).
-set -euo pipefail
-source "$(dirname "$0")/lib.sh"
-cd "$VM_DIR"
-mode=${1:-test}
-display=(-display none)
-# shellcheck disable=SC2054 # the commas are QEMU's
-[[ ${WINDOW-} == 1 || $mode != test ]] && display=(-display gtk,gl=off,zoom-to-fit=on)
-code=/usr/share/edk2/x64/OVMF_CODE.4m.fd
-[[ -f disk.qcow2 ]] || qemu-img create -f qcow2 disk.qcow2 40G
-[[ -f OVMF_VARS.fd ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd OVMF_VARS.fd
-disk=disk.qcow2 vars=OVMF_VARS.fd extra=()
-case $mode in
-  install)
-    [[ -f ${2-} ]] || { echo "usage: tests/vm/run install OMARCHY.iso" >&2; exit 2; }
-    extra=(-cdrom "$2" -boot once=d) ;;
-  base) ;;
-  test)
-    rm -f "test$SFX.qcow2" "test${SFX}_VARS.fd"
-    qemu-img create -q -f qcow2 -b disk.qcow2 -F qcow2 "test$SFX.qcow2"
-    cp OVMF_VARS.fd "test${SFX}_VARS.fd"
-    disk=test$SFX.qcow2 vars=test${SFX}_VARS.fd ;;
-  *) echo "usage: tests/vm/run install ISO | base | test" >&2; exit 2 ;;
-esac
-rm -f "$QMP_SOCK"
-exec qemu-system-x86_64 -name "omarchy-test ($mode$SFX)" -enable-kvm -machine q35 -cpu host -smp 4 -m 8G \
-  -drive if=pflash,format=raw,readonly=on,file="$code" \
-  -drive if=pflash,format=raw,file="$vars" \
-  -drive file="$disk",if=virtio,format=qcow2 "${extra[@]}" \
-  -device virtio-vga "${display[@]}" \
-  -device virtio-keyboard -device virtio-tablet \
-  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:"$PORT"-:22 \
-  -audiodev pipewire,id=snd -device intel-hda -device hda-duplex,audiodev=snd \
-  -qmp "unix:$QMP_SOCK,server=on,wait=off"
+#!/usr/bin/env python3
+"""tests/vm/run --help says what it does. The code is in harness.py."""
+import sys
+
+from harness import main
+
+sys.exit(main("run", sys.argv[1:]))

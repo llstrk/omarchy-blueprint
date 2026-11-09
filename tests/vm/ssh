@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
-# A shell in the test VM, or one command:  tests/vm/ssh ['command']   (VM=2 for the second)
-source "$(dirname "$0")/lib.sh"
-vm "$@"
+#!/usr/bin/env python3
+"""tests/vm/ssh --help says what it does. The code is in harness.py."""
+import sys
+
+from harness import main
+
+sys.exit(main("ssh", sys.argv[1:]))

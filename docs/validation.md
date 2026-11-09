@@ -10,6 +10,11 @@ hardware: nothing depends on a hosted CI. There are two tiers.
 
 Paste what they print into the pull request (the template asks for it).
 
+The tools are Python (standard library only, like the kit): `bin/check` is
+`omarchy_blueprint/check.py`, `bin/check-builds` is `check_builds.py`, and the
+commands in `tests/vm/` are launchers for `tests/vm/harness.py`. Bash is left
+for what has to be bash: the template, the guest setup, the git hook.
+
 ## bin/check
 
 ```sh
@@ -20,8 +25,9 @@ bin/check --quick                     # skip generating a repo from out/
 
 It checks the kit:
 
-- the unit tests (`tests/`)
-- shellcheck on the template, the scripts and the VM harness
+- the unit tests (`tests/`), including the parsing the tools below rely on
+- that every Python file compiles
+- shellcheck on the template and the kit's few bash scripts
 - that the page's script parses (with node, when it is installed)
 - no em dashes
 - no secrets in what git would commit; the lines it only warns about are printed
@@ -60,24 +66,38 @@ VM=2 tests/vm/stop
 be using by hand (2222). `fresh` never replaces a running VM.
 
 A good run looks like this: the questions in the first minute, sudo asked once,
-`finished, exit 0`, and after it
+`finished, exit 0`, then the "Left for you" list the restore ended with, and
+checks on the restored machine:
 
 ```
-Plan: 0 create, 0 update, ...
-pending: 0
-failed units: 0, user: 0
-Hyprland config errors: 0
-left running: 0
+  7:18  finished, exit 0: 8 questions, sudo asked 1 times
+        Left for you:
+          • Sign in to GitHub (gh auth login), then run ./bootstrap.sh again for the private repos
+          • wl-kbptr did not build: see "A package that no longer builds" in README.md
+        ✓ plan: 1 create, 0 update, 15 unchanged, 0 remove, 0 unknown
+            create     package:aur:wl-kbptr    missing    installed   (on the Left for you list)
+        ✓ pending: 1
+        ✓ failed units: 0
+        ✓ Hyprland config errors: 0
+        ✓ left running: 0
 ```
+
+Work the restore did not finish passes when the "Left for you" list names it: a
+package that no longer builds is the restore telling the person, as it should.
+Work left undone without a word fails the run.
+
+It exits with `bootstrap.sh`'s exit code, or 2 for an unknown question, 3 when
+the popup lost the keyboard, 4 when a check afterwards failed, 1 on a timeout.
 
 An unknown question stops the run with the VM left as it is: add a line to the
 answers file if the question is expected. `tests/vm/ssh` opens a shell in the VM
-for a look around (`tests/vm/ssh 'command'` runs one).
+for a look around (`tests/vm/ssh 'command'` runs one), and `tests/vm/qmp shot
+screen.png` takes a screenshot. Every command takes `--help`.
 
 ### Failures worth testing on purpose
 
 Copy the setup repo, break one thing, commit, and restore it. Each should end
-with `exit 0` and the problem on the "Left for you" list:
+with `exit 0`, the problem on the "Left for you" list and every check passing:
 
 - a package that no longer exists: add `"pacman:no-such-package-xyz" = "latest"`
   under `[bootstrap.packages]`

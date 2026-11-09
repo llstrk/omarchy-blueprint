@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
-# Stop a test VM at once. Its disk is a throwaway copy, so nothing is lost.
-#   tests/vm/stop             VM=2 tests/vm/stop for the second instance
-set -euo pipefail
-source "$(dirname "$0")/lib.sh"
-running || { echo "VM $N is not running."; exit 0; }
-qmp quit
-echo "VM $N stopped."
+#!/usr/bin/env python3
+"""tests/vm/stop --help says what it does. The code is in harness.py."""
+import sys
+
+from harness import main
+
+sys.exit(main("stop", sys.argv[1:]))
