@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""See omarchy_blueprint/check.py, or run with --help."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from omarchy_blueprint.check import main  # noqa: E402
+
+sys.exit(main())

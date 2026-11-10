@@ -1,0 +1,13 @@
+#!/bin/bash
+# One-time setup of the clean install, run inside the VM: ssh for the test
+# scripts, nothing else. docs/validation.md has the steps that serve it; in the
+# VM's terminal:  curl -s 10.0.2.2:8765/setup-guest | bash
+set -euo pipefail
+key=$(curl -sf http://10.0.2.2:8765/vm_key.pub)
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+grep -qF "$key" ~/.ssh/authorized_keys 2>/dev/null || echo "$key" >>~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+sudo pacman -S --needed --noconfirm openssh
+sudo systemctl enable --now sshd
+sudo ufw allow 22/tcp
+echo SETUP-DONE

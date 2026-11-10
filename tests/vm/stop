@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""tests/vm/stop --help says what it does. The code is in harness.py."""
+import sys
+
+from harness import main
+
+sys.exit(main("stop", sys.argv[1:]))

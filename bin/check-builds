@@ -1,89 +1,9 @@
-#!/usr/bin/env bash
-# Build every AUR package a setup repo installs, and every PKGBUILD it pins
-# under pkgbuilds/, in throwaway folders without installing them. An AUR
-# package that built once can stop building when Arch updates something it
-# needs, and otherwise only a new machine finds out.
-#
-# This runs the packages' build scripts, as the restore will, and asks sudo
-# for build dependencies that are missing (removed again afterwards). Run it on
-# a spare machine or a VM, or on the source machine when its owner agrees.
-#
-#   bin/check-builds REPO
-set -uo pipefail
+#!/usr/bin/env python3
+"""See omarchy_blueprint/check_builds.py, or run with --help."""
+import sys
+from pathlib import Path
 
-repo=${1:?usage: bin/check-builds REPO}
-cd "$repo" || exit 1
-mapfile -t aur < <(grep -hoE '^"aur:[^"]+"' mise*.toml 2>/dev/null | sed 's/^"aur://; s/"$//' | sort -u)
-shopt -s nullglob
-pinned=(pkgbuilds/*/PKGBUILD)
-if ((${#aur[@]} + ${#pinned[@]} == 0)); then
-  echo "Nothing to build: no aur: packages and no pkgbuilds/ in $repo."
-  exit 0
-fi
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from omarchy_blueprint.check_builds import main  # noqa: E402
 
-work=$(mktemp -d "${TMPDIR:-/tmp}/check-builds.XXXXXX")
-failed=()
-# makepkg asks for the password again for every pacman call (sudo -k). Plain
-# sudo asks once and remembers it for this terminal.
-conf="$work/makepkg.conf"
-printf '%s\n' 'source /etc/makepkg.conf' \
-  'for c in /etc/makepkg.conf.d/*.conf; do [[ -r $c ]] && source "$c"; done' \
-  'PACMAN_AUTH=(sudo)' >"$conf"
-
-build() { # name folder-with-PKGBUILD
-  local log="$work/$1.log"
-  echo "  building $1 (sudo may ask, to install what the build needs)"
-  if (cd "$2" && makepkg --config "$conf" --syncdeps --rmdeps --noconfirm) >"$log" 2>&1; then
-    echo "  ✓ $1 builds"
-    rm -rf "$2"
-  else
-    echo "  ✗ $1 does not build. Log: $log"
-    grep -aE '^ERROR|error:|Error:|not found' "$log" | grep -v '^==> ERROR: A failure occurred' | tail -6 | sed 's/^/      /'
-    failed+=("$1")
-  fi
-}
-
-if ((${#aur[@]})); then
-  # The AUR repo is named after the package base, which differs for split packages.
-  query=$(printf 'arg[]=%s&' "${aur[@]}")
-  bases=$(curl -sf --max-time 15 "https://aur.archlinux.org/rpc/v5/info?$query" | python3 -c '
-import json, sys
-for r in json.load(sys.stdin)["results"]:
-    print(r["Name"], r["PackageBase"])') || bases=""
-  echo "From the AUR:"
-  for pkg in "${aur[@]}"; do
-    base=$(awk -v p="$pkg" '$1 == p { print $2 }' <<<"$bases")
-    if [[ -z $base ]]; then
-      echo "  ✗ $pkg is not in the AUR (or the AUR did not answer)"
-      failed+=("$pkg")
-      continue
-    fi
-    if ! git clone -q "https://aur.archlinux.org/$base.git" "$work/aur-$pkg" 2>/dev/null; then
-      echo "  ✗ $pkg: could not fetch https://aur.archlinux.org/$base.git"
-      failed+=("$pkg")
-      continue
-    fi
-    build "$pkg" "$work/aur-$pkg"
-  done
-fi
-
-if ((${#pinned[@]})); then
-  echo "Pinned in pkgbuilds/:"
-  for f in "${pinned[@]}"; do
-    pkg=$(basename "$(dirname "$f")")
-    cp -r "$(dirname "$f")" "$work/pin-$pkg"
-    build "$pkg" "$work/pin-$pkg"
-  done
-fi
-
-if ((${#failed[@]} == 0)); then
-  rm -rf "$work"
-  echo "Everything builds."
-  exit 0
-fi
-echo
-echo "These will not install on a new machine: ${failed[*]}"
-echo "The comments on an AUR package's page usually name the cause:"
-for pkg in "${failed[@]}"; do echo "  https://aur.archlinux.org/packages/$pkg"; done
-echo "To pin a build that works, see \"A package that no longer builds\" in the repo's README.md."
-exit 1
+sys.exit(main())

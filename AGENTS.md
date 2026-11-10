@@ -286,10 +286,13 @@ unreachable repos, and mise prompting for every config.
 
 | Path | What it is |
 |---|---|
-| `bin/` | `inspect`, `blueprint`, `generate` and `check-secrets` (launchers for the package), and `check-builds` |
+| `bin/` | `inspect`, `blueprint`, `generate` and `check-secrets` (launchers for the package), `check-builds`, and `check` (the kit's own checks) |
 | `omarchy_blueprint/` | The Python package (standard library only). `collectors/` hold the rules |
 | `blueprint/index.html` | The review page template. `bin/blueprint` fills it in |
 | `template/` | `bootstrap.sh`, its helpers and the step recipes it is built from |
 | `docs/` | Rules and lessons the steps above refer to |
-| `tests/` | Rules tested against a fake machine: `python3 -m unittest discover tests` |
+| `tests/` | Rules tested against a fake machine; `tests/vm/` runs a restore on a blank VM |
 | `examples/` | A made-up inventory to try the page with |
+
+Changing the kit itself (not a person's blueprint): every change goes through a
+pull request, validated on our own hardware as `docs/validation.md` describes.
